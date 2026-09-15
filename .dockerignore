@@ -1,0 +1,28 @@
+# Dependencias (evita enviar node_modules al build, que pesan cientos de MB)
+node_modules
+**/node_modules
+.pnpm-store
+
+# Salidas de compilación
+dist
+**/dist
+build
+
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Git y logs
+.git
+.gitignore
+*.log
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Entorno de desarrollo / editor
+.vscode
+.idea
+*.tsbuildinfo
