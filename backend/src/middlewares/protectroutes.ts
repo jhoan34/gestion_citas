@@ -1,16 +1,12 @@
 import type { Request, Response, NextFunction } from "express"
 import { db } from "../lib/db.js"
 import { getAuth, clerkClient } from "@clerk/express";
+import { Prisma } from "../generated/prisma/client.js";
 
 
-interface AuthedUser {
-    clerkid: string;
-    email: string;
-    fullname: string;
-    role_id: number | null;
-    is_active: boolean;
-    role: { id: number; name: string } | null;
-}
+export type AuthedUser = Prisma.UserGetPayload<{
+    include: { role: true }
+}>
 
 export interface AuthedRequest extends Request {
     user?: AuthedUser;
@@ -28,7 +24,7 @@ function sdkToPayload(clerkUser: ClerkSdkUser) {
     if (!email) return null;
 
     const fullname =
-        `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() || email;
+        `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() || null;
     const phone = clerkUser.phoneNumbers[0]?.phoneNumber;
 
     return { email, fullname, ...(phone ? { phone } : {}) };
@@ -67,15 +63,29 @@ export default async function protectRoutes(req: AuthedRequest, res: Response, n
             }
 
             const cliente = await db.roles.findUnique({ where: { name: "cliente" } });
-            user = await db.user.upsert({
-                where: { clerkid: userId },
-                update: { ...payload, is_active: true },
-                create: { clerkid: userId, ...payload, role_id: cliente?.id ?? null, is_active: true },
-                include: { role: true },
-            });
+            try {
+                user = await db.user.upsert({
+                    where: { clerkid: userId },
+                    update: { ...payload, is_active: true },
+                    create: { clerkid: userId, ...payload, role_id: cliente?.id ?? null, is_active: true },
+                    include: { role: true },
+                });
+            } catch (e) {
+                // Email/teléfono ya registrados con otro clerkid: re-leer en vez de fallar.
+                if (typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002") {
+                    console.warn("protectRoutes: conflicto UNIQUE, re-leyendo usuario:", payload.email);
+                    user = await db.user.findUnique({ where: { clerkid: userId }, include: { role: true } });
+                    if (!user) {
+                        res.status(401).json({ message: "account not synced, retry" })
+                        return
+                    }
+                } else {
+                    throw e;
+                }
+            }
         }
 
-        if (!user.is_active) {
+        if (!user?.is_active) {
             res.status(403).json({ message: "account disabled" })
             return
         }
