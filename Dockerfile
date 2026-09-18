@@ -44,7 +44,7 @@ COPY backend/package.json backend/package-lock.json ./
 COPY backend/prisma7.config.ts ./
 # Deps completas (incl. prisma CLI + tsx): se necesitan en runtime para
 # `migrate deploy` y `db seed` al arrancar el contenedor.
-RUN npm ci && npm cache clean --force
+RUN npm ci --include=dev && npm cache clean --force
 
 COPY --from=backend-build --chown=node:node /app/backend/dist ./dist
 # El seed (tsx prisma/seed.ts) importa el cliente vía ../src/generated (layout dev):
