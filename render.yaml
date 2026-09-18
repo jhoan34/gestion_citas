@@ -1,0 +1,33 @@
+# Blueprint de Render para gestion-citas (servicio Docker único:
+# backend Express + frontend estático servido desde /app/public).
+# Uso: Dashboard → New → Blueprint → conectar el repo.
+# Las variables con sync: false se completan a mano en el Dashboard.
+
+# NOTA: las VITE_* se usan en build-time del frontend (dentro de Docker).
+# Render NO las inyecta al build desde envVars: cuando el frontend las use,
+# repítelas en Dashboard → Settings → Docker Build Arguments del servicio.
+services:
+  - type: web
+    name: gestion-citas
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        # URL pública del propio servicio (se conoce tras el primer deploy;
+        # para servicios Docker de un solo contenedor el frontend viene del mismo origen)
+        value: https://gestion-citas.onrender.com
+      - key: DATABASE_URL
+        sync: false # Neon: postgresql://... (pooler recomendado)
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: VITE_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SIGNING_SECRET
+        sync: false # Dashboard Clerk → Webhooks → endpoint https://<tu-dominio>/api/webhook/clerk

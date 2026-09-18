@@ -6,10 +6,22 @@ import { getAllowedOrigins } from "./lib/origins.js"
 import path from "node:path"
 import job from "./lib/cron.js"
 import { existsSync } from "node:fs";
+import clerkWebhook from "./webhooks/clerk.js"
+import authRouter from "./routes/auth.js"
+import authRoutes from "./routes/auth.js"
+
 
 const STATIC_DIR = process.env.STATIC_DIR || path.join(process.cwd(), "dist");
 
 const app = express()
+
+// Healthcheck independiente: debe responder aunque Clerk esté caído/lento.
+// Render y el HEALTHCHECK de Docker lo usan para decidir si el servicio vive.
+app.get("/api/health", (req, res) => {
+  res.sendStatus(200);
+});
+
+app.use("/api/webhook/clerk",  clerkWebhook)
 
 app.use(express.json())
 app.use(clerkMiddleware)
@@ -27,10 +39,10 @@ app.use(
     })
 )
 
-app.get("/api/health", (req, res) => {
-  res.sendStatus(200);
-});
+// Requiere clerkMiddleware (req.auth) y express.json(); por eso va después de ambos.
+app.use("/api/auth", authRouter);
 
+app.use("/api/auth", authRoutes)
 
 const staticIndex = path.join(STATIC_DIR, "index.html")
 const hasFrontend = existsSync(staticIndex);

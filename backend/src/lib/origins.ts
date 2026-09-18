@@ -7,7 +7,6 @@ const DEFAULT_ORIGINS = [
   "http://127.0.0.1:5000",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
-  "https://chat-proyect-59t0.onrender.com"
 ];
 
 export function getAllowedOrigins(): string[] {
